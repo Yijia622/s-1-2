@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI导游团队</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            line-height: 1.5;
+            animation: fadeIn 0.5s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* 团队消息样式 - 三角形排列三机器人头像 */
+        .team-message {
+            align-self: flex-start;
+        }
+        .team-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4285f4 0%, #9c27b0 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .robot-icon {
+            position: absolute;
+            font-size: 8px;
+            color: white;
+            font-weight: bold;
+        }
+        .robot1 {
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .robot2 {
+            bottom: 4px;
+            left: 8px;
+        }
+        .robot3 {
+            bottom: 4px;
+            right: 8px;
+        }
+        .team-bubble {
+            background-color: #e5e5ea;
+            color: #000;
+            border-radius: 18px;
+            padding: 10px 15px;
+            flex: 1;
+        }
+        /* AI成员消息样式 - 基础样式 */
+        .ai-member-message {
+            align-self: flex-start;
+        }
+        .ai-member-bubble {
+            border-radius: 18px;
+            padding: 10px 15px;
+            flex: 1;
+            position: relative;
+            color: #000; /* 统一文字颜色保证可读性 */
+        }
+        /* 不同AI成员的头像和气泡颜色（浅色调匹配） */
+        /* 小游 - 蓝色系 */
+        .xiaoyou-avatar { background-color: #4285f4; }
+        .xiaoyou-bubble { background-color: #e8f0fe; }
+        /* 小行 - 绿色系 */
+        .xiaoxing-avatar { background-color: #0f9d58; }
+        .xiaoxing-bubble { background-color: #e6f4ea; }
+        /* 小伴 - 黄色系 */
+        .xiaoban-avatar { background-color: #f4b400; }
+        .xiaoban-bubble { background-color: #fef7e0; }
+        /* 小景 - 紫色系 */
+        .xiaojing-avatar { background-color: #9c27b0; }
+        .xiaojing-bubble { background-color: #f3e8ff; }
+        /* 小途 - 橙色系 */
+        .xiaotu-avatar { background-color: #f4511e; }
+        .xiaotu-bubble { background-color: #fee8e0; }
+        
+        /* AI头像通用样式 */
+        .ai-member-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* AI名称标签 */
+        .ai-member-bubble::before {
+            content: attr(data-name);
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: #666;
+        }
+        /* 用户消息样式 */
+        .user-message {
+            align-self: flex-end;
+            background-color: #007aff;
+            color: white;
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        #userInput {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+            cursor: default; /* 取消输入光标样式 */
+        }
+        #sendBtn {
+            padding: 10px 20px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #sendBtn:hover {
+            background-color: #0066cc;
+        }
+        /* 缩进样式 */
+        .indent {
+            display: inline-block;
+            width: 2em; /* 两个字符缩进 */
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI导游团队</div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- 消息会动态生成 -->
+        </div>
+        <div class="chat-input">
+            <input type="text" id="userInput" value="请提供香港的景点" readonly> <!-- 设置默认值+只读 -->
+            <button id="sendBtn">发送问题</button>
+        </div>
+    </div>
+    <script>
+        // 获取DOM元素
+        const chatMessages = document.getElementById('chatMessages');
+        const sendBtn = document.getElementById('sendBtn');
+        const userInput = document.getElementById('userInput');
+        
+        // 团队初始消息
+        const teamInitMsg = "您好！我们是您的AI导游团队~团队由AI小游、AI小行、AI小伴、AI小景和AI小途5名成员组成，我们会从不同的角度为您提供建议~请问有什么能帮到您？";
+        // 团队总回复
+        const teamReplyMsg = "好的~根据您的需求，我们将为您推荐以下景点：";
+        // 用户固定消息（与输入框默认值一致）
+        const userMsg = "请提供香港的景点";
+        // 各AI的景点推荐（加粗景点+开头缩进）
+        const aiMessages = [
+            { 
+                name: '小游', 
+                avatarClass: 'xiaoyou-avatar',
+                bubbleClass: 'xiaoyou-bubble', // 新增气泡样式类
+                content: '<strong>🌃维多利亚港</strong><br><span class="indent"></span>位于香港九龙半岛与香港岛之间，是“世界三大夜景”之一。在这里可以欣赏到港岛和九龙两岸繁华的都市景观。' 
+            },
+            { 
+                name: '小行', 
+                avatarClass: 'xiaoxing-avatar',
+                bubbleClass: 'xiaoxing-bubble', // 新增气泡样式类
+                content: '<strong>🗻太平山顶</strong><br><span class="indent"></span>香港岛的最高点，是香港的代表性景点。乘坐复古缆车登山，可以饱览维港美景，并参观香港杜莎夫人蜡像馆。' 
+            },
+            { 
+                name: '小伴', 
+                avatarClass: 'xiaoban-avatar',
+                bubbleClass: 'xiaoban-bubble', // 新增气泡样式类
+                content: '<strong>🎡香港迪士尼乐园</strong><br><span class="indent"></span>位于香港大屿山，是一个充满奇妙与欢乐的魔法世界。可以参与精彩刺激的机动游戏，并欣赏夜晚的烟花秀。' 
+            },
+            { 
+                name: '小景', 
+                avatarClass: 'xiaojing-avatar',
+                bubbleClass: 'xiaojing-bubble', // 新增气泡样式类
+                content: '<strong>🏝️南丫岛</strong><br><span class="indent"></span>这是一个充满慢生活气息的离岛。岛上有榕树湾的创意小店、洪圣爷沙滩的碧蓝海水以及索罟湾的宁静渔村。' 
+            },
+            { 
+                name: '小途', 
+                avatarClass: 'xiaotu-avatar',
+                bubbleClass: 'xiaotu-bubble', // 新增气泡样式类
+                content: '<strong>🛍️铜锣湾</strong><br><span class="indent"></span>是购物爱好者的天堂。时代广场、希慎广场、SOGO 等大型商场集中，从国际大牌到潮流小店应有尽有。' 
+            }
+        ];
+        // 页面加载时显示团队初始消息
+        window.onload = function() {
+            addTeamMessage(teamInitMsg);
+        }
+        // 添加团队消息（三角形排列三机器人头像）
+        function addTeamMessage(content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message team-message';
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'team-avatar';
+            
+            const robot1 = document.createElement('span');
+            robot1.className = 'robot-icon robot1';
+            robot1.textContent = '🤖';
+            
+            const robot2 = document.createElement('span');
+            robot2.className = 'robot-icon robot2';
+            robot2.textContent = '🤖';
+            
+            const robot3 = document.createElement('span');
+            robot3.className = 'robot-icon robot3';
+            robot3.textContent = '🤖';
+            
+            avatarDiv.appendChild(robot1);
+            avatarDiv.appendChild(robot2);
+            avatarDiv.appendChild(robot3);
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'team-bubble';
+            bubbleDiv.innerHTML = content;
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        // 添加AI成员消息（修改：应用对应气泡样式）
+        function addAiMemberMessage(aiMsg) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-member-message';
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = `ai-member-avatar ${aiMsg.avatarClass}`;
+            avatarDiv.textContent = '🤖';
+            
+            const bubbleDiv = document.createElement('div');
+            // 应用对应AI的气泡样式类
+            bubbleDiv.className = `ai-member-bubble ${aiMsg.bubbleClass}`;
+            bubbleDiv.setAttribute('data-name', aiMsg.name);
+            bubbleDiv.innerHTML = aiMsg.content; // 支持HTML标签
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        // 添加用户消息
+        function addUserMessage(content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        // 发送按钮点击事件
+        sendBtn.addEventListener('click', function() {
+            addUserMessage(userMsg);
+            // 无需清空输入框（保持默认值）
+            
+            setTimeout(() => {
+                addTeamMessage(teamReplyMsg);
+                
+                aiMessages.forEach((aiMsg, index) => {
+                    setTimeout(() => {
+                        addAiMemberMessage(aiMsg);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, (index + 1) * 1000);
+                });
+            }, 1000);
+            
+            // 点击后禁用按钮，防止重复发送
+            sendBtn.disabled = true;
+            sendBtn.style.backgroundColor = '#999';
+        });
+    </script>
+</body>
+</html>

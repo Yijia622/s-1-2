@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI导游团队</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .chat-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: white; /* 统一白色背景 */
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.08);
+            padding: 25px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2d3748;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .message {
+            max-width: 85%;
+            padding: 12px 18px;
+            border-radius: 22px;
+            line-height: 1.6;
+            animation: fadeIn 0.5s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ai-message {
+            align-self: flex-start;
+        }
+        .ai-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        /* 不同颜色的机器人头像 */
+        .avatar-xiaoyou { background-color: #4299e1; } /* 蓝色 */
+        .avatar-xiaoxing { background-color: #48bb78; } /* 绿色 */
+        .avatar-xiaoban { background-color: #f4b400; } /* 黄色 */
+        .avatar-xiaojing { background-color:  #e53e3e; } /* 红色 */
+        .avatar-xiaotu { background-color: #f4511e; } /* 橙色 */
+        
+        .ai-bubble {
+            background-color: #f0f0f0; /* 统一浅灰色 */
+            color: #2d3748;
+            border-radius: 22px;
+            padding: 12px 18px;
+            flex: 1;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: #4299e1; /* 统一蓝色 */
+            color: white;
+            padding: 12px 18px;
+            border-radius: 22px;
+        }
+        .chat-input {
+            display: flex;
+            gap: 12px;
+        }
+        #userInput {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 25px;
+            outline: none;
+            font-size: 15px;
+            transition: border-color 0.3s ease;
+        }
+        #userInput:focus {
+            border-color: #4299e1;
+        }
+        #sendBtn {
+            padding: 12px 24px;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background-color 0.3s ease;
+        }
+        #sendBtn:hover {
+            background-color: #3182ce;
+        }
+        #sendBtn:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        .category-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+        .attraction-item {
+            margin: 6px 0;
+            padding-left: 8px;
+        }
+        .ai-name {
+            font-size: 12px;
+            margin-top: 5px;
+            color: #718096;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI导游团队</div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- 消息会动态生成 -->
+        </div>
+        <div class="chat-input">
+           <input type="text" id="userInput" value="请推荐挪威三日游的景点" readonly>
+            <button id="sendBtn">发送问题</button>
+        </div>
+    </div>
+    <script>
+        // 获取DOM元素
+        const chatMessages = document.getElementById('chatMessages');
+        const sendBtn = document.getElementById('sendBtn');
+        const userInput = document.getElementById('userInput');
+        
+        // 团队初始消息
+        const teamInitMsg = "您好！我们是您的AI导游团队~团队由AI小游、AI小行、AI小伴、AI小景和AI小途5名成员组成，我们会从不同的角度为您提供建议~请问有什么能帮到您？";
+        // 用户查询消息
+        const userQuery = "请推荐挪威三日游的景点";
+        // 团队分工推荐内容
+        const teamRecommendations = [
+            {
+                aiName: "AI导游团队", // 统一前缀
+                avatarClass: "avatar-xiaoyou",
+                content: [
+                    "好的~根据您的需求，我们将分别为您提供最适合游览的自然风光、历史遗产、艺术文化、城市景观和特色小镇："
+                ]
+            },
+            {
+                aiName: "AI导游小游", // 统一前缀
+                avatarClass: "avatar-xiaoyou",
+                content: [
+                    "🌳第1类：自然风光",
+                    "· 盖朗厄尔峡湾：位于挪威西海岸，形于冰河时代，是联合国教科文组织世界遗产。",
+                    "· 山妖之舌：在哈当厄尔峡湾附近，是一块海拔 1180 米的巨石，具有令人惊叹的景色。",
+                    "· 贝斯山脊：位于挪威东部，是挪威最壮丽的登山路线之一，也是国家级风景徒步行路线。"
+                ]
+            },
+            {
+                aiName: "AI导游小行", // 统一前缀
+                avatarClass: "avatar-xiaoxing",
+                content: [
+                    "🏯第2类：历史遗产",
+                    "· 布吕根：位于卑尔根，是联合国教科文组织世界遗产，由色彩鲜艳的木屋组成码头街区。",
+                    "· 乌尔内斯木板教堂：是世界上唯一被列入联合国教科文组织世界遗产名录的木板教堂。",
+                    "· 阿尔塔岩画：位于挪威最北部的芬马克郡，为研究史前文化提供了重要线索。"
+                ]
+            },
+            {
+                aiName: "AI导游小伴", // 统一前缀
+                avatarClass: "avatar-xiaoban",
+                content: [
+                    "🖼️ 第3类：艺术文化",
+                    "· 维格兰雕塑公园：位于奥斯陆的弗罗格纳，是世界上最独特的雕塑公园之一。",
+                    "· 埃克贝格雕塑公园：园内有40 座雕塑和当代艺术装置，将文化与自然完美结合。",
+                    "· 蒙克博物馆：馆内收藏了大量蒙克的作品，包括他的代表作《呐喊》等。"
+                ]
+            },
+            {
+                aiName: "AI导游小景", // 统一前缀
+                avatarClass: "avatar-xiaojing",
+                content: [
+                    "🛍️ 第4类：城市景观",
+                    "· 奥斯陆歌剧院：国家歌剧院的所在地，其独特的建筑设计使其成为标志性景观之一。",
+                    "· 奥斯陆市政厅：是奥斯陆的政治中心，也是每年诺贝尔和平奖颁奖典礼的举办地。",
+                    "· 大西洋海滨公路：8.3公里的公路横跨多个小岛，桥梁设计极具美感。"
+                ]
+            },
+            {
+                aiName: "AI导游小途", // 统一前缀
+                avatarClass: "avatar-xiaotu",
+                content: [
+                    "📷第5类：特色小镇",
+                    "· 腓特烈斯塔老城：位于东福尔郡，是一座星形的要塞城市，具有独特的商店和小巷。",
+                    "· 勒罗斯：是联合国教科文组织世界遗产地，具有众多艺术家的工作室和传统的挪威建筑。",
+                    "· 努斯渔村：位于罗弗敦群岛，是挪威最古老、保存最完好的渔村，可以感受渔村生活。"
+                ]
+            }
+        ];
+        
+        // 页面加载显示初始消息
+        window.onload = function() {
+            addTeamMessage("AI导游团队", "avatar-xiaoyou", teamInitMsg); // 初始显示AI导游团队
+        };
+        
+        // 添加团队成员消息
+        function addTeamMessage(aiName, avatarClass, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            
+            const avatarContainer = document.createElement('div');
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = `ai-avatar ${avatarClass}`;
+            avatarDiv.textContent = '🤖'; // 统一机器人头像
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'ai-name';
+            nameDiv.textContent = aiName;
+            avatarContainer.appendChild(avatarDiv);
+            avatarContainer.appendChild(nameDiv);
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'ai-bubble';
+            
+            // 处理内容显示
+            if (Array.isArray(content)) {
+                content.forEach(line => {
+                    if (line.startsWith('🌳') || line.startsWith('🏯') || line.startsWith('🖼️') || line.startsWith('🛍️') || line.startsWith('📷')) {
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = 'category-title';
+                        titleDiv.textContent = line;
+                        bubbleDiv.appendChild(titleDiv);
+                    } else {
+                        const textDiv = document.createElement('div');
+                        textDiv.className = 'attraction-item';
+                        textDiv.textContent = line;
+                        bubbleDiv.appendChild(textDiv);
+                    }
+                });
+            } else {
+                bubbleDiv.textContent = content;
+            }
+            
+            messageDiv.appendChild(avatarContainer);
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 添加用户消息
+        function addUserMessage(content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'user-message';
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 发送按钮点击事件
+        sendBtn.addEventListener('click', function() {
+            const inputVal = userInput.value.trim();
+            if (inputVal !== userQuery) {
+                addUserMessage(inputVal);
+                setTimeout(() => {
+                    addTeamMessage("AI导游小游", "avatar-xiaoyou", "抱歉，我们暂时只支持挪威三日游景点推荐，请输入：" + userQuery);
+                }, 800);
+                return;
+            }
+            
+            addUserMessage(userQuery);
+            userInput.value = '';
+            sendBtn.disabled = true;
+            sendBtn.style.backgroundColor = '#a0aec0';
+            
+            // 依次显示团队成员推荐
+            let delay = 1200;
+            teamRecommendations.forEach(item => {
+                setTimeout(() => {
+                    addTeamMessage(item.aiName, item.avatarClass, item.content);
+                }, delay);
+                delay += 1500; // 每个成员回复间隔1.5秒
+            });
+        });
+        
+        // 回车发送
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

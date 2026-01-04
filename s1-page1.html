@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单个AI - AI导游</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            line-height: 1.5;
+            animation: fadeIn 0.5s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* AI消息样式 - 带头像 */
+        .ai-message {
+            align-self: flex-start;
+        }
+        .ai-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .ai-bubble {
+            background-color: #e5e5ea;
+            color: #000;
+            border-radius: 18px;
+            padding: 10px 15px;
+            flex: 1;
+        }
+        /* 用户消息样式 */
+        .user-message {
+            align-self: flex-end;
+            background-color: #007aff;
+            color: white;
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        #userInput {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+            cursor: default; /* 禁用输入光标样式 */
+        }
+        #sendBtn {
+            padding: 10px 20px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #sendBtn:hover {
+            background-color: #0066cc;
+        }
+        /* 空行样式 */
+        .line-break {
+            height: 8px;
+        }
+        /* 缩进样式 */
+        .indent {
+            display: inline-block;
+            width: 2em; /* 两个字符缩进 */
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI导游</div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- 消息会动态生成 -->
+        </div>
+        <div class="chat-input">
+            <input type="text" id="userInput" value="请提供香港的景点" readonly>
+            <button id="sendBtn">发送问题</button>
+        </div>
+    </div>
+    <script>
+        // 获取DOM元素
+        const chatMessages = document.getElementById('chatMessages');
+        const sendBtn = document.getElementById('sendBtn');
+        const userInput = document.getElementById('userInput');
+        
+        // AI初始消息
+        const aiInitMsg = "您好！我是您的AI导游“小游”~请问有什么能帮到您？";
+        // AI回复内容（按行拆分，包含空行标记，景点加粗+开头缩进）
+        const aiReplyLines = [
+            "好的~根据您的需求，我将为您推荐以下景点：",
+            "", // 空行
+            '</span><strong>🌃维多利亚港</strong>',
+            '<span class="indent"></span>位于香港九龙半岛与香港岛之间，是“世界三大夜景”之一。在这里可以欣赏到港岛和九龙两岸繁华的都市景观。',
+            "", // 空行
+            '</span><strong>🗻太平山顶</strong>',
+            '<span class="indent"></span>香港岛的最高点，是香港的代表性景点。乘坐复古缆车登山，可以饱览维港美景，并参观香港杜莎夫人蜡像馆。',
+            "", // 空行
+            '</span><strong>🎡香港迪士尼乐园</strong>',
+            '<span class="indent"></span>位于香港大屿山，是一个充满奇妙与欢乐的魔法世界。可以参与精彩刺激的机动游戏，并欣赏夜晚的烟花秀。',
+            "", // 空行
+            '</span><strong>🏝️南丫岛</strong>',
+            '<span class="indent"></span>这是一个充满慢生活气息的离岛。岛上有榕树湾的创意小店、洪圣爷沙滩的碧蓝海水以及索罟湾的宁静渔村。',
+            "", // 空行
+            '</span><strong>🛍️铜锣湾</strong>',
+            '<span class="indent"></span>是购物爱好者的天堂。时代广场、希慎广场、SOGO 等大型商场集中，从国际大牌到潮流小店应有尽有。'
+        ];
+        // 固定用户消息内容
+        const userMsg = "请提供香港的景点";
+        
+        // 页面加载时显示AI初始消息
+        window.onload = function() {
+            addAiInitMessage(aiInitMsg);
+        }
+        
+        // 添加AI初始消息（带头像）
+        function addAiInitMessage(content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'ai-avatar';
+            avatarDiv.textContent = '🤖';
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'ai-bubble';
+            bubbleDiv.textContent = content;
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 发送按钮点击事件
+        sendBtn.addEventListener('click', function() {
+            addUserMessage(userMsg);
+            
+            // 发送后禁用按钮和输入框，防止重复发送
+            sendBtn.disabled = true;
+            sendBtn.style.backgroundColor = '#999';
+            userInput.style.backgroundColor = '#f5f5f5';
+            
+            // 延迟显示AI回复（模拟思考过程）
+            setTimeout(() => {
+                const aiReplyContainer = document.createElement('div');
+                aiReplyContainer.className = 'message ai-message';
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'ai-avatar';
+                avatarDiv.textContent = '🤖';
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = 'ai-bubble';
+                
+                aiReplyContainer.appendChild(avatarDiv);
+                aiReplyContainer.appendChild(bubbleDiv);
+                chatMessages.appendChild(aiReplyContainer);
+                
+                // 逐行打印AI回复（支持HTML格式）
+                let lineIndex = 0;
+                function printNextLine() {
+                    if (lineIndex < aiReplyLines.length) {
+                        const line = aiReplyLines[lineIndex];
+                        if (line === "") {
+                            const br = document.createElement('div');
+                            br.className = 'line-break';
+                            bubbleDiv.appendChild(br);
+                        } else {
+                            const lineDiv = document.createElement('div');
+                            lineDiv.innerHTML = line; // 支持HTML标签解析
+                            bubbleDiv.appendChild(lineDiv);
+                        }
+                        chatMessages.scrollTop = chatMessages.scrollHeight; // 自动滚动到底部
+                        lineIndex++;
+                        setTimeout(printNextLine, 300); // 每行间隔300ms，模拟打字效果
+                    }
+                }
+                printNextLine();
+                
+            }, 1000);
+        });
+        
+        // 添加用户消息
+        function addUserMessage(content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // 自动滚动到底部
+        }
+    </script>
+</body>
+</html>
